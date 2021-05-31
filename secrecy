@@ -1,0 +1,64 @@
+"""
+Created on Sat May  1 13:33:07 2021
+
+@author: joost
+
+Testing how to calculate the measures in the 2008 article
+THE INFLUENCE OF SECRECY ON THE COMMUNICATION STRUCTURE OF COVERT NETWORKS
+"""
+
+import networkx as nx
+import pandas as pd
+
+S = nx.Graph(name="Star")
+S.add_edges_from([(1, 2), (1, 3), (1, 4), (1, 5)])
+R = nx.Graph(name="Ring")
+R.add_edges_from([(1, 2), (2, 3), (3, 4), (4, 5), (5, 1)])
+P = nx.Graph(name="Path")
+P.add_edges_from([(1, 2), (2, 3), (3, 4), (4, 5)])
+C = nx.Graph(name="Complete")
+C.add_edges_from([(1, 2), (1, 3), (1, 4), (1, 5), (2, 3), (2, 4), (2, 5),
+                  (3, 4), (3, 5), (4, 5)])
+
+graphs = [S, R, P, C]
+
+tot_dist = {graph.name:
+            sum([sum(a[1].values())
+                 for a in list(nx.shortest_path_length(graph))])
+            for graph in graphs}
+diam = {graph.name: nx.diameter(graph) for graph in graphs}
+func = lambda n : n*(n-1)
+perf = {graph[0].name:
+        func(graph[0].order())/tot_dist[graph[1]]
+        for graph in zip(graphs, tot_dist)}
+worst = {graph.name: 1/diam[graph.name] for graph in graphs}
+# the variant in 4.1
+func1 = lambda n, m : (n**2-n-2*m)/(n**2)
+secr1 = {graph.name: func1(graph.order(), graph.size())
+         for graph in graphs}
+bargain1 = {graph.name: perf[graph.name]*secr1[graph.name]
+           for graph in graphs}
+# the variant in 4.2
+func2 = lambda n, m, p : (n**2-n-2*p*m)/(n**2)
+secr2 = {graph.name: func2(graph.order(), graph.size(), 0.5)
+         for graph in graphs}
+bargain2 = {graph.name: perf[graph.name]*secr2[graph.name]
+           for graph in graphs}
+# the variant in 4.3
+func3 = lambda n, m, d : (2*m*(n-2)+n*(n-1)-d)/((2*m+n)*n)
+deg = lambda g : sum(x**2 for x in dict(nx.degree(g)).values())
+secr3 = {graph.name: func3(graph.order(), graph.size(), deg(graph))
+         for graph in graphs}
+bargain3 = {graph.name: perf[graph.name]*secr3[graph.name]
+           for graph in graphs}
+
+table = pd.DataFrame(data=[tot_dist, diam, perf, worst, 
+                           secr1, bargain1,
+                           secr2, bargain2,
+                           secr3, bargain3],
+                     index=["T(g)", "D(g)", "I(g)", "I*(g)",
+                            "S1(g)", chr(956)+"1(g)",
+                            "S2(g)", chr(956)+"2(g)",
+                            "S3(g)", chr(956)+"3(g)"])
+table = table.transpose()
+print(table)
